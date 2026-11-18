@@ -10,6 +10,24 @@
       "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjQwIiBmaWxsPSIjMDAwMDAwIi8+PHBhdGggZD0iTTk2IDQwIEMgMTQwIDQwLCAxNTAgMTAwLCA5NiAxNTIgQyA0MiAxMDAsIDUyIDQwLCA5NiA0MCBaIiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIwLjgiLz48L3N2Zz4=",
       "sizes": "192x192",
       "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMCIgZmlsbD0iIzAwMDAwMCIvPjxwYXRoIGQ9Ik0yNTYgMTAwIEMgMzcwIDEwMCwgNDAwIDI2MCwgMjU2IDQwMCBDIDExMiAyNjAsIDE0MiAxMDAsIDI1NiAxMDAgWiIgZmlsbD0iI2ZmZmZmZiIgb3BhY2l0eT0iMC44Ii8+PC9zdmc+",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Начать сессию (5 мин)",
+      "short_name": "Старт",
+      "url": "./index.html?start=true",
+      "icons": [
+        {
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjQwIiBmaWxsPSIjMDAwMDAwIi8+PHBhdGggZD0iTTk2IDQwIEMgMTQwIDQwLCAxNTAgMTAwLCA5NiAxNTIgQyA0MiAxMDAsIDUyIDQwLCA5NiA0MCBaIiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIwLjgiLz48L3N2Zz4=",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
