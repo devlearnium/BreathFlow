@@ -46,7 +46,6 @@
             position: relative;
         }
 
-        /* Верхняя панель */
         .top-bar {
             display: flex;
             justify-content: space-between;
@@ -77,7 +76,6 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Главный экран */
         .main-screen {
             flex-grow: 1;
             display: flex;
@@ -102,7 +100,6 @@
         .phase-text.top { position: absolute; top: 5%; }
         .phase-text.bottom { position: absolute; bottom: 5%; }
 
-        /* Дорожка */
         .track-container {
             position: relative;
             width: var(--track-width);
@@ -117,7 +114,6 @@
             padding: 7px;
         }
 
-        /* Шарик */
         .ball {
             width: var(--ball-size);
             height: var(--ball-size);
@@ -130,7 +126,6 @@
             z-index: 2;
         }
 
-        /* Кнопка Старт/Стоп */
         .action-btn {
             width: 80%;
             max-width: 300px;
@@ -153,7 +148,6 @@
             box-shadow: 0 0 20px rgba(255,255,255,0.1);
         }
 
-        /* Модальные окна */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -194,7 +188,6 @@
             margin-bottom: 10px;
         }
 
-        /* Быстрые пресеты */
         .quick-presets {
             display: flex;
             gap: 8px;
@@ -215,7 +208,6 @@
             cursor: pointer;
         }
 
-        /* Список программ */
         .program-list {
             display: flex;
             flex-direction: column;
@@ -255,9 +247,7 @@
             margin-top: 5px;
             text-align: center;
         }
-        .create-prog-btn:active { background: #222; }
 
-        /* Настройки */
         .settings-row {
             display: flex;
             justify-content: space-between;
@@ -291,7 +281,24 @@
         input:checked + .slider { background-color: #4CAF50; }
         input:checked + .slider:before { transform: translateX(20px); }
 
-        /* Конструктор */
+        /* Слайдер громкости фона */
+        .vol-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #444;
+            border-radius: 3px;
+            outline: none;
+            margin-top: 10px;
+        }
+        .vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+
         .builder-input {
             width: 100%;
             padding: 15px;
@@ -348,7 +355,6 @@
             background: transparent; border: 1px solid #444; color: #aaa; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; margin-bottom: 5px;
         }
 
-        /* Загрузка аудио */
         .audio-settings { display: flex; flex-direction: column; gap: 12px; }
         .audio-row {
             display: flex; justify-content: space-between; align-items: center; background: var(--element-bg); padding: 12px 16px; border-radius: 16px;
@@ -369,7 +375,6 @@
 </head>
 <body>
 
-    <!-- Верхняя панель -->
     <div class="top-bar">
         <button class="top-btn" id="vibBtn">
             <svg viewBox="0 0 24 24"><path d="M17 4h-2V2h-2v2h-2V2H9v2H7v2H5v2h2v8H5v2h2v2h2v2h2v-2h2v2h2v-2h2v-2h2v-2h-2V8h2V6h-2V4zm-4 14H9V6h4v12zm4-4h-2V8h2v6z"/></svg>
@@ -390,7 +395,6 @@
 
     <button class="action-btn" id="actionBtn">НАЧАТЬ</button>
 
-    <!-- Главные настройки -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal-content">
             <h2>Настройки</h2>
@@ -406,7 +410,7 @@
 
             <div>
                 <div class="section-title">Длительность сессии</div>
-                <div class="settings-row" style="justify-content: center; gap: 10px;">
+                <div class="settings-row" style="justify-content: center;">
                     <select id="sessionDuration" style="background: #333; color: #fff; border: none; padding: 10px; border-radius: 10px; font-size: 16px; font-weight: 600; outline: none; width: 100%; text-align: center;">
                         <option value="180">3 минуты</option>
                         <option value="300" selected>5 минут</option>
@@ -418,12 +422,15 @@
 
             <div>
                 <div class="section-title">Звуковая волна (Биофидбек)</div>
-                <div class="settings-row">
-                    <span>Включить звук</span>
-                    <label class="switch">
-                        <input type="checkbox" id="soundWaveToggle">
-                        <span class="slider"></span>
-                    </label>
+                <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                        <span>Включить звук</span>
+                        <label class="switch">
+                            <input type="checkbox" id="soundWaveToggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <input type="range" id="waveVolSlider" class="vol-slider" min="0" max="100" value="30">
                 </div>
             </div>
 
@@ -462,7 +469,6 @@
         </div>
     </div>
 
-    <!-- Конструктор программ -->
     <div class="modal-overlay" id="builderModal">
         <div class="modal-content">
             <h2>Создание программы</h2>
@@ -489,47 +495,88 @@
         // --- АУДИО ДВИЖОК (Web Audio API) ---
         let audioCtx = null;
         let limiter = null;
+        let masterGain = null;
         let waveOsc = null;
         let waveGain = null;
+
+        // Для голосовых файлов
+        let voiceNodesSetUp = false;
+        let voiceGain = null;
+        let highpass = null;
+        let sourceInhale = null;
+        let sourceHold = null;
+        let sourceExhale = null;
+
+        let waveVol = parseInt(localStorage.getItem('bf_wave_vol') || '30') / 100;
 
         function initAudioContext() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
             limiter = audioCtx.createDynamicsCompressor();
             limiter.threshold.value = -3;
             limiter.knee.value = 30;
             limiter.ratio.value = 12;
             limiter.attack.value = 0.003;
             limiter.release.value = 0.25;
+            
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 1;
+            
+            masterGain.connect(limiter);
             limiter.connect(audioCtx.destination);
         }
 
-        // Плавное приглушение (Ducking)
+        function setupVoiceNodes() {
+            if (voiceNodesSetUp) return;
+            
+            highpass = audioCtx.createBiquadFilter();
+            highpass.type = 'highpass';
+            highpass.frequency.value = 20;
+            
+            voiceGain = audioCtx.createGain();
+            voiceGain.gain.value = 1.0; // Максимальная громкость для голоса
+            
+            highpass.connect(voiceGain);
+            voiceGain.connect(masterGain);
+
+            sourceInhale = audioCtx.createMediaElementSource(audioInhale);
+            sourceHold = audioCtx.createMediaElementSource(audioHold);
+            sourceExhale = audioCtx.createMediaElementSource(audioExhale);
+
+            sourceInhale.connect(highpass);
+            sourceHold.connect(highpass);
+            sourceExhale.connect(highpass);
+
+            voiceNodesSetUp = true;
+        }
+
+        // Плавное приглушение (Ducking) фоновой волны
         function duckWaveAudio(shouldDuck) {
             if (!waveGain || !audioCtx) return;
-            const targetVol = shouldDuck ? 0.05 : 0.3;
+            const targetVol = shouldDuck ? (waveVol * 0.25) : waveVol;
             waveGain.gain.setTargetAtTime(targetVol, audioCtx.currentTime, 0.1);
         }
 
         function startSoundWave(type, durationSec) {
             if (!isSoundWaveEnabled) return;
             initAudioContext();
+            setupVoiceNodes();
             if (audioCtx.state === 'suspended') audioCtx.resume();
 
-            stopSoundWave(); // Останавливаем предыдущий, если был
+            stopSoundWave();
 
             waveOsc = audioCtx.createOscillator();
             waveGain = audioCtx.createGain();
             
             waveOsc.type = 'sine';
             waveOsc.connect(waveGain);
-            waveGain.connect(limiter);
+            waveGain.connect(masterGain);
 
             const now = audioCtx.currentTime;
             
-            // Плавный старт (De-clicking)
             waveGain.gain.setValueAtTime(0, now);
-            waveGain.gain.linearRampToValueAtTime(0.3, now + 0.5);
+            waveGain.gain.linearRampToValueAtTime(waveVol, now + 0.5);
 
             if (type === 'inhale') {
                 waveOsc.frequency.setValueAtTime(150, now);
@@ -539,7 +586,6 @@
                 waveOsc.frequency.linearRampToValueAtTime(150, now + durationSec);
             } else {
                 waveOsc.frequency.setValueAtTime(150, now);
-                // На задержке волна плавно затухает
                 waveGain.gain.setTargetAtTime(0, now + 1, 0.2);
             }
 
@@ -550,44 +596,35 @@
             if (waveOsc && waveGain && audioCtx) {
                 const now = audioCtx.currentTime;
                 waveGain.gain.cancelScheduledValues(now);
-                waveGain.gain.setTargetAtTime(0, now, 0.04); // Быстрое плавное затухание
+                waveGain.gain.setTargetAtTime(0, now, 0.04); 
                 
                 const oscToStop = waveOsc;
-                // Ждем 60мс перед жесткой остановкой, чтобы избежать щелчка
-                setTimeout(() => {
-                    try { oscToStop.stop(); } catch(e){}
-                }, 60);
+                setTimeout(() => { try { oscToStop.stop(); } catch(e){} }, 60);
 
                 waveOsc = null;
                 waveGain = null;
             }
         }
 
-        // Мягкий гонг в конце сессии
         function playGong() {
             initAudioContext();
             const now = audioCtx.currentTime;
-            
-            // Аккорд из трех нот (примерно: D3, A3, D4)
             [146.83, 220.00, 293.66].forEach(freq => {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(freq, now);
-                
                 gain.gain.setValueAtTime(0, now);
                 gain.gain.linearRampToValueAtTime(0.15, now + 0.1);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 5);
-                
                 osc.connect(gain);
-                gain.connect(limiter);
-                
+                gain.connect(masterGain);
                 osc.start(now);
                 osc.stop(now + 5.5);
             });
         }
 
-        // --- IndexedDB для звуков ---
+        // --- IndexedDB ---
         const DB_NAME = 'BreathFlowDB';
         const STORE_NAME = 'audioStore';
         let db;
@@ -651,16 +688,14 @@
         const timerDisplay = document.getElementById('timerDisplay');
         const sessionDurationSelect = document.getElementById('sessionDuration');
         
-        // Конструктор
         const progNameInput = document.getElementById('progNameInput');
         const cyclesContainer = document.getElementById('cyclesContainer');
         const addCycleBtn = document.getElementById('addCycleBtn');
         const saveProgramBtn = document.getElementById('saveProgramBtn');
 
-        // Настройки звука
         const soundWaveToggle = document.getElementById('soundWaveToggle');
+        const waveVolSlider = document.getElementById('waveVolSlider');
 
-        // Аудио UI
         const btnInhale = document.getElementById('btnInhale');
         const btnHold = document.getElementById('btnHold');
         const btnExhale = document.getElementById('btnExhale');
@@ -672,7 +707,6 @@
         const recExhale = document.getElementById('recExhale');
         const resetAudioBtn = document.getElementById('resetAudioBtn');
 
-        // Состояние
         let isRunning = false;
         let phaseTimer = null;
         let sessionTimer = null;
@@ -683,23 +717,28 @@
         
         let isSoundWaveEnabled = localStorage.getItem('bf_wave') !== 'false';
         soundWaveToggle.checked = isSoundWaveEnabled;
+        
+        waveVolSlider.value = waveVol * 100;
+        
         soundWaveToggle.onchange = (e) => {
             isSoundWaveEnabled = e.target.checked;
             localStorage.setItem('bf_wave', isSoundWaveEnabled);
             if (!isSoundWaveEnabled) stopSoundWave();
         };
 
-        // Аудио объекты
+        waveVolSlider.oninput = (e) => {
+            waveVol = parseInt(e.target.value) / 100;
+            localStorage.setItem('bf_wave_vol', e.target.value);
+        };
+
         let audioInhale = new Audio();
         let audioHold = new Audio();
         let audioExhale = new Audio();
 
-        // Запись
         let mediaRecorder = null;
         let audioChunks = [];
         let recordingTarget = null;
 
-        // Программы
         let customPrograms = JSON.parse(localStorage.getItem('bf_custom_progs')) || [];
 
         const BASE_PROGRAMS = {
@@ -714,7 +753,6 @@
         let phaseQueue = [];
         let currentQueueIndex = 0;
 
-        // --- Инициализация UI ---
         function updateVibBtn() {
             if (vibrationEnabled) vibBtn.classList.add('active');
             else vibBtn.classList.remove('active');
@@ -740,7 +778,6 @@
             programList.innerHTML = '';
             quickPresets.innerHTML = '';
 
-            // Быстрые пресеты (только для встроенных)
             const quickKeys = ['box', 'sleep', 'coherent'];
             quickKeys.forEach(key => {
                 const p = BASE_PROGRAMS[key];
@@ -756,7 +793,6 @@
                 quickPresets.appendChild(chip);
             });
 
-            // Полный список
             for (const key in BASE_PROGRAMS) {
                 const p = BASE_PROGRAMS[key];
                 const btn = document.createElement('button');
@@ -770,7 +806,6 @@
                 programList.appendChild(btn);
             }
 
-            // Кастомные
             customPrograms.forEach(prog => {
                 const btn = document.createElement('button');
                 btn.className = `program-btn ${prog.id === currentProgramId ? 'active' : ''}`;
@@ -795,14 +830,10 @@
             });
         }
 
-        // --- КОНСТРУКТОР ---
         let builderData = { name: '', cycles: [] };
 
         openBuilderBtn.onclick = () => {
-            builderData = {
-                name: '',
-                cycles: [ { phases: [ { type: 'inhale', time: 4 }, { type: 'exhale', time: 4 } ] } ]
-            };
+            builderData = { name: '', cycles: [ { phases: [ { type: 'inhale', time: 4 }, { type: 'exhale', time: 4 } ] } ] };
             progNameInput.value = '';
             renderBuilder();
             settingsModal.classList.remove('active');
@@ -861,11 +892,7 @@
             if (builderData.cycles.length === 0 || builderData.cycles.some(c => c.phases.length === 0)) {
                 alert('Добавьте хотя бы одну фазу в каждый цикл!'); return;
             }
-            const newProg = {
-                id: 'custom_' + Date.now(),
-                name: name,
-                sequence: builderData.cycles.flatMap(c => c.phases)
-            };
+            const newProg = { id: 'custom_' + Date.now(), name: name, sequence: builderData.cycles.flatMap(c => c.phases) };
             customPrograms.push(newProg);
             localStorage.setItem('bf_custom_progs', JSON.stringify(customPrograms));
             currentProgramId = newProg.id;
@@ -873,7 +900,6 @@
             closeModal('builderModal');
         };
 
-        // --- АУДИОФАЙЛЫ ---
         async function loadSavedAudio() {
             const keys = ['inhale', 'hold', 'exhale'];
             const btns = { inhale: btnInhale, hold: btnHold, exhale: btnExhale };
@@ -939,14 +965,44 @@
         recExhale.onclick = () => toggleRecording('exhale', recExhale);
 
         // --- МЕХАНИКА ---
-        function playAudioForPhase(type) {
+        function playVoice(type) {
             const audio = type === 'inhale' ? audioInhale : (type === 'hold' ? audioHold : audioExhale);
-            if (audio.src) {
-                duckWaveAudio(true); // Приглушаем волну
-                audio.currentTime = 0;
-                audio.play().catch(e => console.log("Audio blocked", e));
-                audio.onended = () => duckWaveAudio(false); // Возвращаем громкость
+            if (!audio.src) return;
+
+            initAudioContext();
+            setupVoiceNodes();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            duckWaveAudio(true);
+            
+            const now = audioCtx.currentTime;
+            // Плавное появление (Fade In) за 15 мс — убирает клиппинг в начале
+            voiceGain.gain.cancelScheduledValues(now);
+            voiceGain.gain.setValueAtTime(0, now);
+            voiceGain.gain.linearRampToValueAtTime(1, now + 0.015);
+
+            audio.currentTime = 0;
+            audio.play().catch(e => console.log("Audio blocked", e));
+            
+            audio.onended = () => {
+                duckWaveAudio(false);
+            };
+        }
+
+        function stopVoiceImmediate() {
+            if (!audioCtx || !voiceNodesSetUp) {
+                audioInhale.pause(); audioHold.pause(); audioExhale.pause();
+                return;
             }
+            const now = audioCtx.currentTime;
+            // Плавное затухание (Fade Out) за 15 мс — убирает щелчок при остановке
+            voiceGain.gain.cancelScheduledValues(now);
+            voiceGain.gain.setValueAtTime(voiceGain.gain.value, now);
+            voiceGain.gain.linearRampToValueAtTime(0, now + 0.015);
+            
+            setTimeout(() => {
+                audioInhale.pause(); audioHold.pause(); audioExhale.pause();
+            }, 20);
         }
 
         function processNextPhase() {
@@ -957,7 +1013,6 @@
             if (phase.time === 0) { currentQueueIndex++; processNextPhase(); return; }
             const durationMs = phase.time * 1000;
 
-            // Визуал
             if (phase.type === 'inhale') {
                 textTop.textContent = 'ВДОХ'; textBottom.textContent = '';
                 ball.style.transitionDuration = `${phase.time}s`;
@@ -971,8 +1026,9 @@
                 ball.style.transitionDuration = '0s'; 
             }
 
-            // Аудио и вибрация
-            playAudioForPhase(phase.type);
+            stopVoiceImmediate(); // Гасим предыдущий голос
+            setTimeout(() => playVoice(phase.type), 20); // Включаем новый с задержкой 20мс
+            
             startSoundWave(phase.type, phase.time);
             
             if (vibrationEnabled && navigator.vibrate) {
@@ -995,9 +1051,7 @@
             sessionTimer = setInterval(() => {
                 sessionTimeLeft--;
                 timerDisplay.textContent = formatTime(sessionTimeLeft);
-                if (sessionTimeLeft <= 0) {
-                    endSession();
-                }
+                if (sessionTimeLeft <= 0) endSession();
             }, 1000);
         }
 
@@ -1010,6 +1064,7 @@
         async function startBreathing() {
             if (isRunning) return;
             initAudioContext();
+            setupVoiceNodes();
             if (audioCtx.state === 'suspended') audioCtx.resume();
             
             isRunning = true;
@@ -1043,6 +1098,7 @@
             clearTimeout(phaseTimer);
             clearInterval(sessionTimer);
             stopSoundWave();
+            stopVoiceImmediate();
             
             actionBtn.textContent = 'НАЧАТЬ';
             actionBtn.classList.remove('running');
@@ -1051,7 +1107,6 @@
             ball.style.transform = 'translateY(0px)';
             textTop.textContent = '';
             textBottom.textContent = '';
-            audioInhale.pause(); audioHold.pause(); audioExhale.pause();
 
             bgAudio.pause();
             bgAudio.currentTime = 0;
@@ -1074,7 +1129,6 @@
             settingsModal.onclick = (e) => { if (e.target === settingsModal) closeModal('settingsModal'); };
             builderModal.onclick = (e) => { if (e.target === builderModal) closeModal('builderModal'); };
 
-            // Поддержка PWA Shortcut (быстрый старт)
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('start') === 'true') {
                 setTimeout(startBreathing, 500);
