@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BreathFlow</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    
+    <style>
+        :root {
+            --bg-color: #000000;
+            --track-bg: #111111;
+            --track-glow: rgba(255, 255, 255, 0.05);
+            --ball-color: #ffffff;
+            --ball-glow: rgba(255, 255, 255, 0.4);
+            --text-color: #ffffff;
+            --text-muted: #555555;
+            --modal-bg: #1c1c1e;
+            --element-bg: #2c2c2e;
+            --accent: #ffffff;
+            --danger: #ff3b30;
+            
+            --track-height: 55vh;
+            --track-width: 90px;
+            --ball-size: 76px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: var(--text-color);
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Верхние кнопки */
+        .top-btn {
+            position: absolute;
+            top: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--element-bg);
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            cursor: pointer;
+        }
+        .top-btn svg { width: 24px; height: 24px; fill: #888; }
+        .top-btn.active svg { fill: #fff; }
+        #vibBtn { left: 20px; }
+        #settingsBtn { right: 20px; }
+
+        /* Главный экран */
+        .main-screen {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .phase-text {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--text-color);
+            z-index: 5;
+            text-align: center;
+            transition: opacity 0.3s;
+            text-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+        
+        .phase-text.top { position: absolute; top: 10%; }
+        .phase-text.bottom { position: absolute; bottom: 10%; }
+
+        /* Дорожка */
+        .track-container {
+            position: relative;
+            width: var(--track-width);
+            height: var(--track-height);
+            background: var(--track-bg);
+            border-radius: calc(var(--track-width) / 2);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 30px var(--track-glow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 7px;
+        }
+
+        /* Шарик */
+        .ball {
+            width: var(--ball-size);
+            height: var(--ball-size);
+            background: var(--ball-color);
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--ball-glow), inset -5px -5px 15px rgba(0,0,0,0.2);
+            transition-property: transform;
+            transition-timing-function: ease-in-out;
+            will-change: transform;
+            z-index: 2;
+        }
+
+        .marker {
+            position: absolute;
+            width: 40px;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+        .marker.top { top: 20px; }
+        .marker.bottom { bottom: 20px; }
+
+        /* Кнопка Старт/Стоп */
+        .action-btn {
+            width: 80%;
+            max-width: 300px;
+            padding: 22px;
+            margin: 0 auto 40px auto;
+            border-radius: 30px;
+            background-color: var(--element-bg);
+            border: none;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 10;
+        }
+        .action-btn.running {
+            background-color: #333;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(255,255,255,0.1);
+        }
+
+        /* Модальные окна */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            display: flex;
+            align-items: flex-end;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal-content {
+            background: var(--modal-bg);
+            width: 100%;
+            max-height: 90vh;
+            border-radius: 32px 32px 0 0;
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            overflow-y: auto;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+
+        .modal-content h2 { font-size: 20px; font-weight: 700; text-align: center; }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        /* Список программ */
+        .program-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .program-btn {
+            padding: 16px;
+            border-radius: 16px;
+            background: var(--element-bg);
+            border: 1px solid transparent;
+            color: #aaa;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .program-btn.active {
+            border-color: var(--text-color);
+            color: var(--text-color);
+            background: #333;
+        }
+        .program-btn small { display: block; font-size: 12px; color: #666; font-weight: 400; margin-top: 4px; }
+
+        .create-prog-btn {
+            background: transparent;
+            border: 1px dashed #555;
+            color: #aaa;
+            padding: 16px;
+            border-radius: 16px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 5px;
+            text-align: center;
+        }
+        .create-prog-btn:active { background: #222; }
+
+        /* Настройки звука и вибрации */
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--element-bg);
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 10px;
+        }
+        .settings-row span { font-size: 15px; font-weight: 600; }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px; height: 30px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #444; transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 22px; width: 22px;
+            left: 4px; bottom: 4px;
+            background-color: white; transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #4CAF50; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Конструктор */
+        .builder-input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            background: #2c2c2e;
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            outline: none;
+            margin-bottom: 10px;
+        }
+        
+        .cycle-card {
+            background: #2c2c2e;
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #444;
+        }
+        .cycle-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 700;
+            color: #aaa;
+        }
+        .cycle-header button {
+            background: transparent; border: none; color: var(--danger); font-size: 14px; font-weight: 700; cursor: pointer;
+        }
+
+        .seq-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #1c1c1e;
+            padding: 8px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        .seq-row select {
+            background: #333; color: #fff; border: none; padding: 6px; border-radius: 6px; font-size: 13px; font-weight: 600; outline: none; width: 75px;
+        }
+        .seq-row input[type=range] {
+            flex-grow: 1; -webkit-appearance: none; height: 4px; background: #444; border-radius: 2px; outline: none;
+        }
+        .seq-row input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; cursor: pointer;
+        }
+        .seq-row .time-val { font-size: 13px; font-weight: 700; width: 35px; text-align: right; }
+        .seq-row button { background: transparent; border: none; color: #777; font-size: 16px; cursor: pointer; }
+
+        .add-btn {
+            background: transparent; border: 1px solid #444; color: #aaa; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; margin-bottom: 5px;
+        }
+
+        /* Загрузка аудио */
+        .audio-settings { display: flex; flex-direction: column; gap: 12px; }
+        .audio-row {
+            display: flex; justify-content: space-between; align-items: center; background: var(--element-bg); padding: 12px 16px; border-radius: 16px;
+        }
+        .audio-row span { font-size: 14px; font-weight: 600; width: 90px; }
+        .audio-actions { display: flex; gap: 8px; }
+        .audio-btn { background: #444; color: #fff; border: none; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .audio-btn.uploaded { background: #4CAF50; color: #fff; }
+        .rec-btn { background: #333; color: #fff; border: 1px solid #555; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .rec-btn::before { content: ''; width: 8px; height: 8px; background: var(--danger); border-radius: 50%; }
+        .rec-btn.active { background: var(--danger); border-color: var(--danger); }
+        .rec-btn.active::before { background: #fff; animation: blink 1s infinite alternate; }
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.2; } }
+        .reset-audio-btn { margin-top: 10px; padding: 14px; border-radius: 16px; background: transparent; border: 1px solid #444; color: var(--danger); font-weight: 600; cursor: pointer; }
+        input[type="file"] { display: none; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Кнопка вибрации -->
+    <button class="top-btn" id="vibBtn">
+        <svg viewBox="0 0 24 24"><path d="M17 4h-2V2h-2v2h-2V2H9v2H7v2H5v2h2v8H5v2h2v2h2v2h2v-2h2v2h2v-2h2v-2h2v-2h-2V8h2V6h-2V4zm-4 14H9V6h4v12zm4-4h-2V8h2v6z"/></svg>
+    </button>
+
+    <!-- Кнопка настроек -->
+    <button class="top-btn" id="settingsBtn">
+        <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+    </button>
+
+    <div class="main-screen">
+        <div class="phase-text top" id="textTop"></div>
+        <div class="track-container">
+            <div class="marker top"></div>
+            <div class="ball" id="ball"></div>
+            <div class="marker bottom"></div>
+        </div>
+        <div class="phase-text bottom" id="textBottom"></div>
+    </div>
+
+    <button class="action-btn" id="actionBtn">НАЧАТЬ</button>
+
+    <!-- Главные настройки -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <h2>Настройки</h2>
+            
+            <div>
+                <div class="section-title">Программа дыхания</div>
+                <div class="program-list" id="programList"></div>
+                <button class="create-prog-btn" id="openBuilderBtn">+ Создать свою программу</button>
+            </div>
+
+            <div>
+                <div class="section-title">Звуковая волна (Биофидбек)</div>
+                <div class="settings-row">
+                    <span>Включить звук</span>
+                    <label class="switch">
+                        <input type="checkbox" id="soundWaveToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Голосовое сопровождение</div>
+                <div class="audio-settings">
+                    <div class="audio-row">
+                        <span>На вдох</span>
+                        <div class="audio-actions">
+                            <button class="audio-btn" id="btnInhale">Файл</button>
+                            <button class="rec-btn" id="recInhale">Запись</button>
+                        </div>
+                        <input type="file" id="fileInhale" accept="audio/*">
+                    </div>
+                    <div class="audio-row">
+                        <span>На задержку</span>
+                        <div class="audio-actions">
+                            <button class="audio-btn" id="btnHold">Файл</button>
+                            <button class="rec-btn" id="recHold">Запись</button>
+                        </div>
+                        <input type="file" id="fileHold" accept="audio/*">
+                    </div>
+                    <div class="audio-row">
+                        <span>На выдох</span>
+                        <div class="audio-actions">
+                            <button class="audio-btn" id="btnExhale">Файл</button>
+                            <button class="rec-btn" id="recExhale">Запись</button>
+                        </div>
+                        <input type="file" id="fileExhale" accept="audio/*">
+                    </div>
+                </div>
+                <button class="reset-audio-btn" id="resetAudioBtn">Сбросить все звуки</button>
+            </div>
+            
+            <button class="action-btn" style="margin-top: 10px;" onclick="closeModal('settingsModal')">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+
+    <!-- Конструктор программ -->
+    <div class="modal-overlay" id="builderModal">
+        <div class="modal-content">
+            <h2>Создание программы</h2>
+            <input type="text" class="builder-input" id="progNameInput" placeholder="Название программы">
+            
+            <div id="cyclesContainer" style="flex-grow: 1;">
+                <!-- Циклы добавляются динамически -->
+            </div>
+            
+            <button class="add-btn" id="addCycleBtn">+ Добавить цикл</button>
+            <button class="action-btn" id="saveProgramBtn" style="margin-top: 10px;">СОХРАНИТЬ</button>
+            <button class="reset-audio-btn" onclick="closeModal('builderModal')">ОТМЕНА</button>
+        </div>
+    </div>
+
+    <audio id="bgAudio" loop src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"></audio>
+
+    <script>
+        window.onerror = function(msg, src, line) {
+            const err = document.createElement('div');
+            err.style = "position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:12px;";
+            err.textContent = `Ошибка: ${msg} (строка ${line})`;
+            document.body.appendChild(err);
+            return false;
+        };
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW reg failed', err));
+        }
+
+        // --- IndexedDB для звуков ---
+        const DB_NAME = 'BreathFlowDB';
+        const STORE_NAME = 'audioStore';
+        let db;
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onerror = (e) => reject(e);
+                request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+            });
+        }
+
+        function saveAudioToDB(key, blob) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.put(blob, key);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e);
+            });
+        }
+
+        function getAudioFromDB(key) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.get(key);
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = (e) => reject(e);
+            });
+        }
+
+        function clearAllAudioDB() {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.clear();
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e);
+            });
+        }
+
+        // --- DOM ---
+        const ball = document.getElementById('ball');
+        const actionBtn = document.getElementById('actionBtn');
+        const textTop = document.getElementById('textTop');
+        const textBottom = document.getElementById('textBottom');
+        const vibBtn = document.getElementById('vibBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const builderModal = document.getElementById('builderModal');
+        const programList = document.getElementById('programList');
+        const openBuilderBtn = document.getElementById('openBuilderBtn');
+        
+        // Конструктор
+        const progNameInput = document.getElementById('progNameInput');
+        const cyclesContainer = document.getElementById('cyclesContainer');
+        const addCycleBtn = document.getElementById('addCycleBtn');
+        const saveProgramBtn = document.getElementById('saveProgramBtn');
+
+        // Настройки звука
+        const soundWaveToggle = document.getElementById('soundWaveToggle');
+
+        // Аудио UI
+        const btnInhale = document.getElementById('btnInhale');
+        const btnHold = document.getElementById('btnHold');
+        const btnExhale = document.getElementById('btnExhale');
+        const fileInhale = document.getElementById('fileInhale');
+        const fileHold = document.getElementById('fileHold');
+        const fileExhale = document.getElementById('fileExhale');
+        const recInhale = document.getElementById('recInhale');
+        const recHold = document.getElementById('recHold');
+        const recExhale = document.getElementById('recExhale');
+        const resetAudioBtn = document.getElementById('resetAudioBtn');
+
+        // Состояние
+        let isRunning = false;
+        let phaseTimer = null;
+        let wakeLock = null;
+        let bgAudio = document.getElementById('bgAudio');
+        let vibrationEnabled = localStorage.getItem('bf_vib') !== 'false';
+        
+        // Web Audio API (Звуковая волна)
+        let audioCtx = null;
+        let currentOsc = null;
+        let currentGain = null;
+        let isSoundWaveEnabled = localStorage.getItem('bf_wave') !== 'false';
+        
+        soundWaveToggle.checked = isSoundWaveEnabled;
+        soundWaveToggle.onchange = (e) => {
+            isSoundWaveEnabled = e.target.checked;
+            localStorage.setItem('bf_wave', isSoundWaveEnabled);
+        };
+
+        // Аудио
+        let audioInhale = new Audio();
+        let audioHold = new Audio();
+        let audioExhale = new Audio();
+
+        // Запись
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordingTarget = null;
+
+        // Программы
+        let customPrograms = JSON.parse(localStorage.getItem('bf_custom_progs')) || [];
+
+        const BASE_PROGRAMS = {
+            box: { name: 'Баланс (Box)', desc: '4-4-4-4', sequence: [ {type: 'inhale', time: 4}, {type: 'hold', time: 4}, {type: 'exhale', time: 4}, {type: 'hold', time: 4} ] },
+            sleep: { name: 'Сон (4-7-8)', desc: '4-7-8', sequence: [ {type: 'inhale', time: 4}, {type: 'hold', time: 7}, {type: 'exhale', time: 8} ] },
+            dmt: { name: 'Холотропное (DMT)', desc: 'Динамика', sequence: [ {type: 'inhale', time: 4}, {type: 'exhale', time: 4}, {type: 'inhale', time: 2}, {type: 'exhale', time: 2}, {type: 'inhale', time: 2}, {type: 'exhale', time: 2}, {type: 'inhale', time: 4}, {type: 'exhale', time: 4} ] },
+            wim: { name: 'Уим Хоф', desc: 'Быстрые вдохи + задержка', sequence: [ {type: 'inhale', time: 1.5}, {type: 'exhale', time: 1.5}, {type: 'inhale', time: 1.5}, {type: 'exhale', time: 1.5}, {type: 'hold', time: 15} ] }
+        };
+
+        let currentProgramId = 'box';
+        let phaseQueue = [];
+        let currentQueueIndex = 0;
+
+        // --- Инициализация UI ---
+        function updateVibBtn() {
+            if (vibrationEnabled) vibBtn.classList.add('active');
+            else vibBtn.classList.remove('active');
+        }
+        vibBtn.onclick = () => {
+            vibrationEnabled = !vibrationEnabled;
+            localStorage.setItem('bf_vib', vibrationEnabled);
+            updateVibBtn();
+            if (vibrationEnabled && navigator.vibrate) navigator.vibrate(50);
+        };
+
+        window.closeModal = function(id) {
+            document.getElementById(id).classList.remove('active');
+        };
+
+        function renderProgramList() {
+            programList.innerHTML = '';
+            
+            // Встроенные программы
+            for (const key in BASE_PROGRAMS) {
+                const p = BASE_PROGRAMS[key];
+                const btn = document.createElement('button');
+                btn.className = `program-btn ${key === currentProgramId ? 'active' : ''}`;
+                btn.innerHTML = `<div>${p.name} <small>${p.desc}</small></div>`;
+                btn.onclick = () => {
+                    currentProgramId = key;
+                    renderProgramList();
+                    if (isRunning) stopBreathing();
+                };
+                programList.appendChild(btn);
+            }
+
+            // Кастомные программы
+            customPrograms.forEach(prog => {
+                const btn = document.createElement('button');
+                btn.className = `program-btn ${prog.id === currentProgramId ? 'active' : ''}`;
+                btn.innerHTML = `<div>${prog.name} <small>Своя программа</small></div> <button style="background:transparent;border:none;color:#ff3b30;font-size:18px;">✕</button>`;
+                
+                btn.onclick = (e) => {
+                    // Если нажали на крестик - удаляем
+                    if (e.target.tagName === 'BUTTON') {
+                        e.stopPropagation();
+                        if(confirm('Удалить эту программу?')) {
+                            customPrograms = customPrograms.filter(p => p.id !== prog.id);
+                            localStorage.setItem('bf_custom_progs', JSON.stringify(customPrograms));
+                            renderProgramList();
+                            if (currentProgramId === prog.id) currentProgramId = 'box';
+                        }
+                        return;
+                    }
+                    currentProgramId = prog.id;
+                    renderProgramList();
+                    if (isRunning) stopBreathing();
+                };
+                programList.appendChild(btn);
+            });
+        }
+
+        // --- КОНСТРУКТОР ПРОГРАММ ---
+        let builderData = { name: '', cycles: [] };
+
+        openBuilderBtn.onclick = () => {
+            builderData = {
+                name: '',
+                cycles: [
+                    { phases: [ { type: 'inhale', time: 4 }, { type: 'exhale', time: 4 } ] }
+                ]
+            };
+            progNameInput.value = '';
+            renderBuilder();
+            settingsModal.classList.remove('active');
+            builderModal.classList.add('active');
+        };
+
+        function renderBuilder() {
+            cyclesContainer.innerHTML = '';
+            
+            builderData.cycles.forEach((cycle, cIndex) => {
+                const card = document.createElement('div');
+                card.className = 'cycle-card';
+
+                const header = document.createElement('div');
+                header.className = 'cycle-header';
+                header.innerHTML = `<span>Цикл ${cIndex + 1}</span> <button onclick="removeCycle(${cIndex})">Удалить</button>`;
+
+                const phasesDiv = document.createElement('div');
+                
+                cycle.phases.forEach((phase, pIndex) => {
+                    const row = document.createElement('div');
+                    row.className = 'seq-row';
+                    
+                    const select = document.createElement('select');
+                    select.innerHTML = `
+                        <option value="inhale" ${phase.type === 'inhale' ? 'selected' : ''}>Вдох</option>
+                        <option value="hold" ${phase.type === 'hold' ? 'selected' : ''}>Задержка</option>
+                        <option value="exhale" ${phase.type === 'exhale' ? 'selected' : ''}>Выдох</option>
+                    `;
+                    select.onchange = (e) => {
+                        builderData.cycles[cIndex].phases[pIndex].type = e.target.value;
+                    };
+
+                    const slider = document.createElement('input');
+                    slider.type = 'range';
+                    slider.min = '0';
+                    slider.max = '120';
+                    slider.value = phase.time;
+                    slider.oninput = (e) => {
+                        const val = parseInt(e.target.value);
+                        builderData.cycles[cIndex].phases[pIndex].time = val;
+                        valDisplay.textContent = `${val}с`;
+                    };
+
+                    const valDisplay = document.createElement('span');
+                    valDisplay.className = 'time-val';
+                    valDisplay.textContent = `${phase.time}с`;
+
+                    const delBtn = document.createElement('button');
+                    delBtn.textContent = '✕';
+                    delBtn.onclick = () => {
+                        builderData.cycles[cIndex].phases.splice(pIndex, 1);
+                        renderBuilder();
+                    };
+
+                    row.appendChild(select);
+                    row.appendChild(slider);
+                    row.appendChild(valDisplay);
+                    row.appendChild(delBtn);
+                    phasesDiv.appendChild(row);
+                });
+
+                const addPhaseBtn = document.createElement('button');
+                addPhaseBtn.className = 'add-btn';
+                addPhaseBtn.textContent = '+ Добавить фазу в этот цикл';
+                addPhaseBtn.onclick = () => {
+                    builderData.cycles[cIndex].phases.push({ type: 'inhale', time: 4 });
+                    renderBuilder();
+                };
+
+                card.appendChild(header);
+                card.appendChild(phasesDiv);
+                card.appendChild(addPhaseBtn);
+                cyclesContainer.appendChild(card);
+            });
+        }
+
+        window.removeCycle = function(index) {
+            builderData.cycles.splice(index, 1);
+            renderBuilder();
+        };
+
+        addCycleBtn.onclick = () => {
+            builderData.cycles.push({ phases: [ { type: 'inhale', time: 4 } ] });
+            renderBuilder();
+        };
+
+        saveProgramBtn.onclick = () => {
+            const name = progNameInput.value.trim() || `Программа ${customPrograms.length + 1}`;
+            if (builderData.cycles.length === 0 || builderData.cycles.some(c => c.phases.length === 0)) {
+                alert('Добавьте хотя бы одну фазу в каждый цикл!');
+                return;
+            }
+
+            const newProg = {
+                id: 'custom_' + Date.now(),
+                name: name,
+                // Flatten cycles into a single sequence for the execution engine
+                sequence: builderData.cycles.flatMap(c => c.phases)
+            };
+
+            customPrograms.push(newProg);
+            localStorage.setItem('bf_custom_progs', JSON.stringify(customPrograms));
+            
+            currentProgramId = newProg.id;
+            renderProgramList();
+            closeModal('builderModal');
+        };
+
+        // --- ЗВУКОВАЯ ВОЛНА ---
+        function startSoundWave(type, durationSec) {
+            if (!isSoundWaveEnabled) return;
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            stopSoundWave(); // Останавливаем предыдущий
+
+            currentOsc = audioCtx.createOscillator();
+            currentGain = audioCtx.createGain();
+            
+            currentOsc.type = 'sine';
+            currentOsc.connect(currentGain);
+            currentGain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            
+            // Громкость (плавное появление)
+            currentGain.gain.setValueAtTime(0, now);
+            currentGain.gain.linearRampToValueAtTime(0.3, now + 0.5);
+
+            if (type === 'inhale') {
+                // Поднимаем частоту от 150 до 300 Гц
+                currentOsc.frequency.setValueAtTime(150, now);
+                currentOsc.frequency.linearRampToValueAtTime(300, now + durationSec);
+            } else if (type === 'exhale') {
+                // Опускаем частоту от 300 до 150 Гц
+                currentOsc.frequency.setValueAtTime(300, now);
+                currentOsc.frequency.linearRampToValueAtTime(150, now + durationSec);
+            } else {
+                // Для задержки просто держим 150 Гц
+                currentOsc.frequency.setValueAtTime(150, now);
+            }
+
+            currentOsc.start(now);
+            
+            // Затухание в конце (если задержка, затухает быстрее)
+            if (type === 'hold') {
+                currentGain.gain.setValueAtTime(0.3, now + 1);
+                currentGain.gain.linearRampToValueAtTime(0, now + 2);
+                currentOsc.stop(now + 2);
+            }
+        }
+
+        function stopSoundWave() {
+            if (currentOsc) {
+                try { currentOsc.stop(); } catch(e){}
+                currentOsc = null;
+            }
+            if (currentGain) {
+                try { currentGain.disconnect(); } catch(e){}
+                currentGain = null;
+            }
+        }
+
+        // --- АУДИОФАЙЛЫ ---
+        async function loadSavedAudio() {
+            const keys = ['inhale', 'hold', 'exhale'];
+            const btns = { inhale: btnInhale, hold: btnHold, exhale: btnExhale };
+            const audios = { inhale: audioInhale, hold: audioHold, exhale: audioExhale };
+
+            for (const key of keys) {
+                const blob = await getAudioFromDB(key);
+                if (blob) {
+                    audios[key].src = URL.createObjectURL(blob);
+                    btns[key].textContent = 'Есть ✓';
+                    btns[key].classList.add('uploaded');
+                }
+            }
+        }
+
+        function setupFileInputs() {
+            const handleFile = async (file, key, audioObj, btn) => {
+                if (!file) return;
+                await saveAudioToDB(key, file);
+                audioObj.src = URL.createObjectURL(file);
+                btn.textContent = 'Есть ✓';
+                btn.classList.add('uploaded');
+            };
+
+            btnInhale.onclick = () => fileInhale.click();
+            btnHold.onclick = () => fileHold.click();
+            btnExhale.onclick = () => fileExhale.click();
+
+            fileInhale.onchange = (e) => handleFile(e.target.files[0], 'inhale', audioInhale, btnInhale);
+            fileHold.onchange = (e) => handleFile(e.target.files[0], 'hold', audioHold, btnHold);
+            fileExhale.onchange = (e) => handleFile(e.target.files[0], 'exhale', audioExhale, btnExhale);
+
+            resetAudioBtn.onclick = async () => {
+                await clearAllAudioDB();
+                audioInhale.src = ''; audioHold.src = ''; audioExhale.src = '';
+                btnInhale.textContent = 'Файл'; btnInhale.classList.remove('uploaded');
+                btnHold.textContent = 'Файл'; btnHold.classList.remove('uploaded');
+                btnExhale.textContent = 'Файл'; btnExhale.classList.remove('uploaded');
+            };
+        }
+
+        async function toggleRecording(targetKey, btn) {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                btn.classList.remove('active');
+                btn.textContent = 'Запись';
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                recordingTarget = targetKey;
+
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await saveAudioToDB(recordingTarget, audioBlob);
+                    const url = URL.createObjectURL(audioBlob);
+                    if (recordingTarget === 'inhale') audioInhale.src = url;
+                    if (recordingTarget === 'hold') audioHold.src = url;
+                    if (recordingTarget === 'exhale') audioExhale.src = url;
+                    const fileBtn = document.getElementById(`btn${recordingTarget.charAt(0).toUpperCase() + recordingTarget.slice(1)}`);
+                    if (fileBtn) { fileBtn.textContent = 'Есть ✓'; fileBtn.classList.add('uploaded'); }
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                btn.classList.add('active');
+                btn.textContent = 'Стоп';
+            } catch (err) { alert('Нет доступа к микрофону.'); }
+        }
+
+        recInhale.onclick = () => toggleRecording('inhale', recInhale);
+        recHold.onclick = () => toggleRecording('hold', recHold);
+        recExhale.onclick = () => toggleRecording('exhale', recExhale);
+
+        // --- МЕХАНИКА ДЫХАНИЯ ---
+        function playAudioForPhase(type) {
+            const audio = type === 'inhale' ? audioInhale : (type === 'hold' ? audioHold : audioExhale);
+            if (audio.src) {
+                audio.currentTime = 0;
+                audio.play().catch(e => console.log("Audio blocked", e));
+            }
+        }
+
+        function processNextPhase() {
+            if (!isRunning) return;
+
+            if (currentQueueIndex >= phaseQueue.length) currentQueueIndex = 0;
+            const phase = phaseQueue[currentQueueIndex];
+            
+            if (phase.time === 0) {
+                currentQueueIndex++;
+                processNextPhase();
+                return;
+            }
+
+            const durationMs = phase.time * 1000;
+
+            if (phase.type === 'inhale') {
+                textTop.textContent = 'ВДОХ'; textBottom.textContent = '';
+                ball.style.transitionDuration = `${phase.time}s`;
+                ball.style.transform = `translateY(calc(-1 * (var(--track-height) - var(--ball-size) - 14px)))`;
+            } 
+            else if (phase.type === 'exhale') {
+                textTop.textContent = ''; textBottom.textContent = 'ВЫДОХ';
+                ball.style.transitionDuration = `${phase.time}s`;
+                ball.style.transform = `translateY(0px)`;
+            } 
+            else if (phase.type === 'hold') {
+                textTop.textContent = 'ЗАДЕРЖКА'; textBottom.textContent = 'ЗАДЕРЖКА';
+                ball.style.transitionDuration = '0s'; 
+            }
+
+            playAudioForPhase(phase.type);
+            startSoundWave(phase.type, phase.time);
+            
+            if (vibrationEnabled && navigator.vibrate) navigator.vibrate(40);
+
+            phaseTimer = setTimeout(() => {
+                currentQueueIndex++;
+                processNextPhase();
+            }, durationMs);
+        }
+
+        async function startBreathing() {
+            if (isRunning) return;
+            isRunning = true;
+            
+            actionBtn.textContent = 'СТОП';
+            actionBtn.classList.add('running');
+            closeModal('settingsModal');
+
+            let selectedProg = BASE_PROGRAMS[currentProgramId];
+            if (!selectedProg) {
+                selectedProg = customPrograms.find(p => p.id === currentProgramId);
+            }
+
+            phaseQueue = [...selectedProg.sequence];
+            
+            if (phaseQueue.length > 0 && phaseQueue.length < 10 && !currentProgramId.startsWith('custom_')) {
+                const origLen = phaseQueue.length;
+                for(let i=0; i<3; i++) phaseQueue = phaseQueue.concat(phaseQueue.slice(0, origLen));
+            }
+            
+            currentQueueIndex = 0;
+            ball.style.transitionDuration = '0s';
+            ball.style.transform = 'translateY(0px)';
+            
+            bgAudio.volume = 0.01;
+            bgAudio.play().catch(e => console.log(e));
+            try {
+                if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+            } catch(e) {}
+
+            setTimeout(() => { processNextPhase(); }, 500);
+        }
+
+        function stopBreathing() {
+            isRunning = false;
+            clearTimeout(phaseTimer);
+            stopSoundWave();
+            
+            actionBtn.textContent = 'НАЧАТЬ';
+            actionBtn.classList.remove('running');
+            
+            ball.style.transitionDuration = '0.5s';
+            ball.style.transform = 'translateY(0px)';
+            textTop.textContent = '';
+            textBottom.textContent = '';
+            audioInhale.pause(); audioHold.pause(); audioExhale.pause();
+
+            bgAudio.pause();
+            bgAudio.currentTime = 0;
+            if (wakeLock !== null) {
+                wakeLock.release().then(() => { wakeLock = null; });
+            }
+        }
+
+        async function init() {
+            await initDB();
+            await loadSavedAudio();
+            setupFileInputs();
+            renderProgramList();
+            updateVibBtn();
+
+            actionBtn.onclick = () => {
+                if (isRunning) stopBreathing();
+                else startBreathing();
+            };
+
+            settingsBtn.onclick = () => settingsModal.classList.add('active');
+            settingsModal.onclick = (e) => { if (e.target === settingsModal) closeModal('settingsModal'); };
+            builderModal.onclick = (e) => { if (e.target === builderModal) closeModal('builderModal'); };
+        }
+
+        init();
+    </script>
+</body>
+</html>
