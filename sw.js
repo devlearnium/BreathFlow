@@ -1,4 +1,4 @@
-const CACHE_NAME = 'breathflow-v5'; // Обновили версию кэша
+const CACHE_NAME = 'breathflow-v6'; // Сброс кэша
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (e) => {
@@ -12,8 +12,6 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-    // Защита от падения на blob: и data: URL (например, записи с микрофона)
     if (!e.request.url.startsWith('http')) return;
-    
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
